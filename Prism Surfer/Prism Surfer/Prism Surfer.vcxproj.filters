@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="리소스 파일\textures">
+      <UniqueIdentifier>{656b444e-5197-4360-90e9-547e4defae55}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cgut.h">
@@ -30,7 +33,7 @@
     <ClInclude Include="gl\glad\glad.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="gl\glfw\glfw3.h">
+    <ClInclude Include="stb_image.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
@@ -41,5 +44,10 @@
     <ClCompile Include="gl\glad\glad.c">
       <Filter>소스 파일</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="tiles.png">
+      <Filter>리소스 파일\textures</Filter>
+    </Image>
   </ItemGroup>
 </Project>

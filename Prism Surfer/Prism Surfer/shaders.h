@@ -24,6 +24,7 @@ void main()
 	tc = texcoord;
 }
 )glsl";
+
 static const char* frag_shader = R"glsl(
 #ifdef GL_ES
 	#ifndef GL_FRAGMENT_PRECISION_HIGH	// highp may not be defined
@@ -39,8 +40,10 @@ in vec2 tc;
 // the only output variable
 out vec4 fragColor;
 
+uniform sampler2D myTexture;
+
 void main()
 {
-	fragColor = vec4(tc.xy, 0, 1);
+	fragColor = texture(myTexture, tc);
 }
 )glsl";

@@ -2,20 +2,43 @@
 #include "cgut.h"		// slee's OpenGL utility
 #include "trackball.h"	// virtual trackball
 #include "shaders.h"
+#include <math.h>
+#include <stdlib.h>
+#include <time.h>
+#include <vector>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
+#define MAX_MAP_V 0.5*PI
+#define MIN_MAP_V 0.1*PI
+#define MIN_MAP_C 3
+#define MAX_MAP_C 7
+#define OBS_CREATE_TIME 1
+#define OBS_CREATE_DIST 30
+#define FRONT_SPEED 10
+#define SIDE_SPEED 30
+
+using namespace std;
 //*************************************
 // global constants
-static const char* window_name = "2018312734 Jiwon Park A3";
+static const char* window_name = "prismsurfer";
 const uint	NUM_DIVIDERS = 50;
 
-// 0 = Sun, 8 = Uranus
-const uint	NUM_RECT = 9;
+// 6각형
+const uint	NUM_RECT = 6;
+const float radius = 5.0f;
+const float width = 2 * radius * tanf(PI / 6);
+const float height = 3.0f;
+
+const uint dist_view = 10;
 
 //*************************************
 // common structures
 struct camera
 {
-	vec3	eye = vec3(0, 30, 300);
-	vec3	at = vec3(0, 0, 0);
+	vec3	eye = vec3(0, 0, 0);
+	vec3	at = vec3(0, 0, 1);
 	vec3	up = vec3(0, 1, 0);
 	mat4	view_matrix = mat4::look_at(eye, at, up);
 
@@ -26,6 +49,11 @@ struct camera
 	mat4	projection_matrix;
 };
 
+typedef struct Obstacle{
+	int wall_num;
+	float position;
+}obstacle;
+
 //*************************************
 // window objects
 GLFWwindow* window = nullptr;
@@ -34,12 +62,15 @@ ivec2		window_size = cg_default_window_size(); // initial window size
 //*************************************
 // OpenGL objects
 GLuint	program = 0;	// ID holder for GPU program
-
+GLuint* texture;
 //*************************************
 // global variables
 int		frame = 0;				// index of rendering frames
 int		zoom_trigger = 0;
 int		pan_trigger = 0;
+
+float map_v, map_c,player_xy=0,ob_time,map_angle=0;
+vector<obstacle> obstacles;
 
 //*************************************
 // scene objects
@@ -54,11 +85,51 @@ mesh* create_rectangle_mesh(float width, float height)
 	mesh* msh = new mesh();
 
 	// TODO: Creating vertex buffer and index buffer of a rectangle
+	vector<vertex> vlist;
+	vector<uint> ilist = { 0,1,2,2,3,0 };
+	vertex v;
+	v.pos = vec3(-width / 2, radius, 0);				//left two vertex
+	v.norm = vec3(-sinf(PI / 6), cosf(PI / 6), 0);
+	v.tex = vec2(.0f, .0f);
+
+	vlist.push_back(v);
+
+	v.pos = vec3(-width / 2, radius, height);
+	v.tex = vec2(.0f, 1.0f);
+	vlist.push_back(v);
+
+	v.pos = vec3(width / 2, radius, height);			//right two vertex
+	v.norm = vec3(sinf(PI / 6), cosf(PI / 6), 0);
+	v.tex = vec2(1.0f, .0f);
+	vlist.push_back(v);
+
+	v.pos = vec3(width / 2, radius, 0);
+	v.tex = vec2(1.0f, 1.0f);
+	vlist.push_back(v);
+	
+	msh->vertex_list.resize(vlist.size());
+	msh->index_list.resize(ilist.size());
+	copy(vlist.begin(), vlist.end(), msh->vertex_list.begin());
+	copy(ilist.begin(), ilist.end(), msh->index_list.begin());
+
+	glGenBuffers(1, &msh->vertex_buffer);
+	glBindBuffer(GL_ARRAY_BUFFER, msh->vertex_buffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertex) * msh->vertex_list.size(), &msh->vertex_list[0], GL_STATIC_DRAW);
+
+	glGenBuffers(1, &msh->index_buffer);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, msh->index_buffer);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint) * msh->index_list.size(), &msh->index_list[0], GL_STATIC_DRAW);
+
+	msh->vertex_array = cg_create_vertex_array(msh->vertex_buffer, msh->index_buffer);
+	if(!msh->vertex_array) { printf("%s(): failed to create vertex aray\n", __func__); return nullptr; }
 
 	return msh;
 }
 
-
+mesh* create_obstacle_mesh(float width, float height)
+{
+	return nullptr;
+}
 
 void update()
 {
@@ -91,24 +162,33 @@ void render()
 	// notify GL that we use our own program
 	glUseProgram(program);
 
-	for (int i = 0; i < NUM_RECT; i++)
+	// Draw field
+	glBindTexture(GL_TEXTURE_2D, texture[0]);
+	int st = int(cam.eye.z / height);
+	for (int s = st; s < st + dist_view; s++)
 	{
-		float t = float(glfwGetTime()) / 10.0f;
-		/************
-		model_matrix = mat4::rotate(vec3(0, 0, 1), t * av[i] * angular_velocity_multiplier)
-			* mat4::translate(vec3(radii[i] * orbit_radius_multiplier, 0, 0))
-			* mat4::rotate(vec3(0, 0, 1), t * self_av[i] * self_rotation_multiplier);
-		************/
-		// TODO: generate model matrix
-		uloc = glGetUniformLocation(program, "model_matrix");
-		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, model_matrix);
+		for (int i = 0; i < NUM_RECT; i++)
+		{
+			//float t = float(glfwGetTime()) / 10.0f;
+			// TODO: generate model matrix
 
-		// bind vertex array object
-		if (pMesh && pMesh->vertex_array) glBindVertexArray(pMesh->vertex_array);
+			model_matrix = mat4::translate(vec3(0, 0, height * s)) * mat4::rotate(vec3(0, 0, 1), PI * i / 3);
+			uloc = glGetUniformLocation(program, "model_matrix");
+			if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, model_matrix);
 
-		// render vertices: trigger shader programs to process vertex data
-		glDrawElements(GL_TRIANGLES, pMesh->index_list.size(), GL_UNSIGNED_INT, nullptr);
+			// bind vertex array object
+			if (pMesh && pMesh->vertex_array) glBindVertexArray(pMesh->vertex_array);
+
+
+
+			// render vertices: trigger shader programs to process vertex data
+			glDrawElements(GL_TRIANGLES, pMesh->index_list.size(), GL_UNSIGNED_INT, nullptr);
+		}
 	}
+
+	// Draw obstacle
+
+
 	// swap front and back buffers, and display to screen
 	glfwSwapBuffers(window);
 }
@@ -209,16 +289,104 @@ bool user_init()
 
 	// init GL states
 	glClearColor(39 / 255.0f, 40 / 255.0f, 34 / 255.0f, 1.0f);	// set clear color
-	glEnable(GL_CULL_FACE);								// turn on backface culling
+	//glEnable(GL_CULL_FACE);								// turn on backface culling
 	glEnable(GL_DEPTH_TEST);								// turn on depth tests
-
+	// wireframe
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	// load the mesh
-	pMesh = create_rectangle_mesh(1.0f, 1.0f);
+	pMesh = create_rectangle_mesh(width, height);
+
+	// 장애물 메시 로드
+
+	// 텍스쳐 로드
+	int texwidth, texheight, nrChannels;
+	uchar* data = stbi_load("tiles.png", &texwidth, &texheight, &nrChannels, 0);
+	if (data == NULL) {
+		printf("Texture file load failed\n");
+		return -2;
+	}
+	glGenTextures(2, texture);
+	glBindTexture(GL_TEXTURE_2D, texture[0]);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+	glGenerateMipmap(GL_TEXTURE_2D);
+	stbi_image_free(data);
+
 	return true;
 }
 
 void user_finalize()
 {
+}
+
+float rand_range(float min, float max) {
+	return (float)(rand() % 10000) / 10000 * (max - min) + min;
+}
+
+void create_obstacle(){
+	int flag[6]={0,};
+	int num=rand()%3*3;
+	for(int i=0;i<num;i++){
+		int t=rand()%6;
+		if(flag[t]==1){
+			i--;
+			continue;
+		}
+		obstacle ob;
+		ob.wall_num=t;
+		ob.position=cam.eye.z+OBS_CREATE_DIST;
+		obstacles.pushback(ob)
+	}
+}
+
+void game_initialize() {
+	srand((int)time(NULL));
+	int dif;
+	printf("Select difficulty\n1:easy\n2:hard\n>>");
+	scanf("%d", &dif);
+	if (dif == 2) {
+		map_v = rand_range(MIN_MAP_V, MAX_MAP_V);
+		map_c = rand_range(MIN_MAP_C, MAX_MAP_C);
+	}
+	else {
+		map_v = 0;
+		map_c = -1;
+	}
+	ob_time=0;
+}
+
+void game_update(){
+	float t=glfwGetTime();
+	if(t>=ob_time){
+		create_obstacle();
+		ob_time+=OBS_CREATE_TIME;
+	}
+	if(t>=map_c){
+		map_v = rand_range(MIN_MAP_V, MAX_MAP_V);
+		if(rand%2==0){
+			map_v*=-1;
+		}
+		map_c+=rand_range(MIN_MAP_C,MAX_MAP_C);
+	}
+	//장애물들 충돌검사, 지나간 장애물 제거
+	vector<obstacle>::iterator it=obastalces.begin();
+	while(it!=obstacles.end()){
+		if(it.postiion<cam.eye.z){
+			//todo:충돌체크
+
+			it=obstacles.erase(it)
+		}
+		else{
+			it++;
+		}
+	}
+	//cam 업데이트
+	cam.eye.z+=FRONT_SPEED;
+	cam.at.z=cam.eye.z+1;
+	map_angle+=map_v;
+	map_angle%=2*PI;
+	cam.up.x=sinf(map_angle);
+	cam.up.y=cosf(map_angle);
+	mat4	view_matrix = mat4::look_at(eye, at, up);
 }
 
 int main(int argc, char* argv[])
