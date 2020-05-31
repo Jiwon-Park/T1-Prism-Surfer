@@ -36,6 +36,18 @@
     <ClInclude Include="stb_image.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="ft2build.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="freetype\config\ftheader.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="stb_truetype.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="stb_image_write.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -56,6 +68,12 @@
       <Filter>리소스 파일\textures</Filter>
     </Image>
     <Image Include="player.png">
+      <Filter>리소스 파일\textures</Filter>
+    </Image>
+    <Image Include="gameover.jpg">
+      <Filter>리소스 파일\textures</Filter>
+    </Image>
+    <Image Include="title.jpg">
       <Filter>리소스 파일\textures</Filter>
     </Image>
   </ItemGroup>
