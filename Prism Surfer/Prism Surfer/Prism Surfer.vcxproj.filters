@@ -46,7 +46,16 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <Image Include="obstacle.png">
+      <Filter>리소스 파일\textures</Filter>
+    </Image>
+    <Image Include="background.jpg">
+      <Filter>리소스 파일\textures</Filter>
+    </Image>
     <Image Include="tiles.png">
+      <Filter>리소스 파일\textures</Filter>
+    </Image>
+    <Image Include="player.png">
       <Filter>리소스 파일\textures</Filter>
     </Image>
   </ItemGroup>
