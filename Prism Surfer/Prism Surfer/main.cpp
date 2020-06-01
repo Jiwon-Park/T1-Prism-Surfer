@@ -6,10 +6,7 @@
 #include "stb_image_write.h"
 #include "cgmath.h"		// slee's simple math library
 #include "cgut.h"		// slee's OpenGL utility
-#include "trackball.h"	// virtual trackball
 #include "shaders.h"
-//#include <ft2build.h>
-//#include FT_FREETYPE_H
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -23,7 +20,7 @@
 #define MAX_MAP_C 3.5f
 #define OBS_CREATE_TIME 1.3f
 #define OBS_CREATE_DIST 110.0f
-#define FRONT_SPEED 0.4f
+#define FRONT_SPEED 0.5f
 #define SIDE_SPEED 0.3f
 #define CAM_PLAYER_DISTANCE 15.0f
 
@@ -83,10 +80,7 @@ GLuint  texture[texture_num];		// bg, tile, obstacle, player, title, gameover, h
 GLuint	ttexture;
 
 //*************************************
-// Freetype objects
-//FT_Library ft;
-//FT_Face face;
-
+// stb_font objects
 stbtt_fontinfo finfo;
 
 //*************************************
@@ -111,7 +105,6 @@ vector<obstacle> obstacles;
 // scene objects
 mesh* mMesh = nullptr, * oMesh = nullptr, * pMesh = nullptr, * bMesh = nullptr, * tMesh = nullptr;
 camera		cam;
-trackball	tb;
 
 //*************************************
 
@@ -299,70 +292,6 @@ mesh* create_text_mesh(float width, float height)
 	return msh;
 }
 
-// failed to draw score into window
-/*
-inline void render_text(const string text, float x, float y, float sx, float sy)
-{
-	FT_GlyphSlot g = face->glyph;
-
-	GLuint uloc;
-
-	glBindTexture(GL_TEXTURE_2D, ttexture);
-	
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-	GLuint vbuf, ibuf, varr;
-	glGenBuffers(1, &vbuf);
-	glGenBuffers(1, &ibuf);
-
-	float textz = cam.eye.z + CAM_PLAYER_DISTANCE + 1.0f;
-
-	for (auto p = text.begin(); p != text.end(); ++p)
-	{
-		if (FT_Load_Char(face, *p, FT_LOAD_RENDER))
-		{
-			printf("not load char %c\n", *p);
-			continue;
-		}
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, g->bitmap.width, g->bitmap.rows, 0, GL_RED, GL_UNSIGNED_BYTE, g->bitmap.buffer);
-		float x2 = x + g->bitmap_left * sx;
-		float y2 = -y - g->bitmap_top * sy;
-		float w = g->bitmap.width * sx;
-		float h = g->bitmap.rows * sy;
-
-		vector<vertex> pos = {
-			{vec3(x2, -y2, textz), vec3(0,0,-1), vec2(0, 0)},
-			{vec3(x2 + w, -y2, textz), vec3(0,0,-1), vec2(1, 0)},
-			{vec3(x2, -y2 - h, textz), vec3(0,0,-1), vec2(0, 1)},
-			{vec3(x2 + w, -y2 - h, textz), vec3(0,0,-1), vec2(1, 1)},
-		};
-
-		vector<uint> index = { 0, 1, 2, 1, 2, 0 };
-		glBindBuffer(GL_ARRAY_BUFFER, vbuf);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(uint) * pos.size(), &pos[0], GL_STATIC_DRAW);
-
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibuf);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint) * index.size(), &index[0], GL_STATIC_DRAW);
-
-		varr = cg_create_vertex_array(vbuf, ibuf);
-		if (!varr) { printf("Can't create text vertex array\n"); return; }
-		glBindVertexArray(varr);
-		uloc = glGetUniformLocation(program, "model_matrix");
-		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, mat4::identity());
-		glDrawElements(GL_TRIANGLES, index.size(), GL_UNSIGNED_INT, nullptr);
-
-		x += (g->advance.x >> 6) * sx;
-		y += (g->advance.y >> 6) * sy;
-	}
-}
-*/
-
 void update()
 {
 	// update projection matrix
@@ -382,11 +311,6 @@ void update()
 
 	uloc = glGetUniformLocation(program, "view_matrix");			if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, cam.view_matrix);
 	uloc = glGetUniformLocation(program, "projection_matrix");	if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, cam.projection_matrix);
-}
-
-void drawtext(void* context, void* data, int size)
-{
-
 }
 
 void rendertext(const string text, float xx, float yy)
@@ -444,9 +368,9 @@ void rendertext(const string text, float xx, float yy)
 	glGenTextures(1, &tt);
 	glBindTexture(GL_TEXTURE_2D, tt);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); //¿§Áö ¹­À½
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);//¼±Çüº¸°£¹ý
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, b_w, b_h, 0, GL_RGBA, GL_UNSIGNED_BYTE, dat);
 
@@ -739,49 +663,10 @@ void keyboard(GLFWwindow* window, int key, int scancode, int action, int mods)
 
 void mouse(GLFWwindow* window, int button, int action, int mods)
 {
-	//delete when release
-	if (button == GLFW_MOUSE_BUTTON_LEFT)
-	{
-		dvec2 pos; glfwGetCursorPos(window, &pos.x, &pos.y);
-		vec2 npos = cursor_to_ndc(pos, window_size);
-		if (action == GLFW_PRESS && zoom_trigger) tb.beginzoom(cam.view_matrix, npos.y);
-		else if (action == GLFW_PRESS && pan_trigger) tb.beginpan(cam.view_matrix, npos);
-		else if (action == GLFW_PRESS)			tb.begin(cam.view_matrix, npos);
-		else if (action == GLFW_RELEASE) {
-			tb.end();
-			tb.endzoom();
-			tb.endpan();
-		}
-	}
-	else if (button == GLFW_MOUSE_BUTTON_RIGHT)
-	{
-		dvec2 pos; glfwGetCursorPos(window, &pos.x, &pos.y);
-		vec2 npos = cursor_to_ndc(pos, window_size);
-		if (action == GLFW_PRESS)			tb.beginzoom(cam.view_matrix, npos.y);
-		else if (action == GLFW_RELEASE)	tb.endzoom();
-	}
-	else if (button == GLFW_MOUSE_BUTTON_MIDDLE)
-	{
-		dvec2 pos; glfwGetCursorPos(window, &pos.x, &pos.y);
-		vec2 npos = cursor_to_ndc(pos, window_size);
-		if (action == GLFW_PRESS)			tb.beginpan(cam.view_matrix, npos);
-		else if (action == GLFW_RELEASE)	tb.endpan();
-	}
 }
 
 void motion(GLFWwindow* window, double x, double y)
 {
-	//if(!tb.is_tracking() && !tb.) return;
-	vec2 npos = cursor_to_ndc(dvec2(x, y), window_size);
-	if (tb.is_tracking())		cam.view_matrix = tb.update(npos);
-	if (tb.is_trackingzoom())
-	{
-		cam.view_matrix = tb.zoom(npos.y);
-	}
-	if (tb.is_trackingpan())
-	{
-		cam.view_matrix = tb.pan(npos);
-	}
 }
 
 bool user_init()
@@ -839,21 +724,28 @@ bool user_init()
 		return false;
 	}
 
-
 	return true;
 }
 
 void user_finalize()
 {
+	free(mMesh);
+	free(bMesh);
+	free(oMesh);
+	free(tMesh);
+	free(pMesh);
 }
-
 
 void create_obstacle() {
 	int flag[6] = { 0, };
 	int num = rand() % 6 ;
+	if (map_v != 0)num++;
+	if (int(glfwGetTime() - start_time) >= 60) num++;
 	switch(num){
-	case 4:
+	case 7:
+	case 6:
 	case 5:
+	case 4:
 	case 3:
 		num = 5;
 		break;
@@ -954,13 +846,6 @@ int game_update() {
 int main(int argc, char* argv[])
 {
 	// create window and initialize OpenGL extensions
-	/*
-	int err = FT_Init_FreeType(&ft);
-	if (err) { printf("Could not init freetype\n");	return 1; }
-	err = FT_New_Face(ft, "LBRITE.TTF", 0, &face);
-	if (err) { printf("Could not load font\n");	return 1; }
-	FT_Set_Pixel_Sizes(face, 0, 20);
-	*/
 	if (!(window = cg_create_window(window_name, window_size.x, window_size.y))) { glfwTerminate(); return 1; }
 	if (!cg_init_extensions(window)) { glfwTerminate(); return 1; }	// version and extensions
 

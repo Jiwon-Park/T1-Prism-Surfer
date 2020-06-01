@@ -183,7 +183,6 @@
     <ClInclude Include="shaders.h" />
     <ClInclude Include="stb_image_write.h" />
     <ClInclude Include="stb_truetype.h" />
-    <ClInclude Include="trackball.h" />
     <ClInclude Include="stb_image.h" />
   </ItemGroup>
   <ItemGroup>
