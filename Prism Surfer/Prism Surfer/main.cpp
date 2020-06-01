@@ -24,16 +24,16 @@
 #define OBS_CREATE_TIME 1.3f
 #define OBS_CREATE_DIST 110.0f
 #define FRONT_SPEED 0.4f
-#define SIDE_SPEED 0.27f
+#define SIDE_SPEED 0.3f
 #define CAM_PLAYER_DISTANCE 15.0f
 
 using namespace std;
 //*************************************
 // global constants
 static const char*	window_name = "prismsurfer";
-static const uint	texture_num = 6;
-static const char*	texture_path[texture_num] = { "background.jpg", "tiles.png", "obstacle.png", "player.png", "title.jpg", "gameover.jpg" };
-static const bool	texture_alpha[texture_num] = { false, true, true, true, false, false };
+static const uint	texture_num = 7;
+static const char*	texture_path[texture_num] = { "background.jpg", "tiles.png", "obstacle.png", "player.png", "title.jpg", "gameover.jpg", "howto.jpg" };
+static const bool	texture_alpha[texture_num] = { false, true, true, true, false, false, false };
 
 const uint	NUM_RECT = 6;
 const float radius = 5.0f;
@@ -73,11 +73,12 @@ typedef struct Obstacle{
 // window objects
 GLFWwindow* window = nullptr;
 ivec2		window_size = cg_default_window_size(); // initial window size
+ivec2		back_window_size, back_window_pos;
 
 //*************************************
 // OpenGL objects
 GLuint	program = 0;	// ID holder for GPU program
-GLuint  texture[texture_num];		// bg, tile, obstacle, player, title, gameover
+GLuint  texture[texture_num];		// bg, tile, obstacle, player, title, gameover, help
 GLuint	ttexture;
 
 //*************************************
@@ -97,6 +98,8 @@ int state_right = 0;
 int state_left = 0;
 int state_game=0;
 int pause=0;
+int help = 0;
+int full = 0;
 
 float pause_time;
 float start_time;
@@ -568,6 +571,30 @@ void render_start()
 	glfwSwapBuffers(window);
 }
 
+void render_help()
+{
+	GLint uloc;
+	mat4 model_matrix;
+	// clear screen (with background color) and clear depth buffer
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	// notify GL that we use our own program
+	glUseProgram(program);
+	glEnable(GL_TEXTURE_2D);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glBindTexture(GL_TEXTURE_2D, texture[6]);
+
+	model_matrix = mat4::translate(0, -backheight / 2, height * dist_view + cam.eye.z) * mat4::rotate(vec3(0, 0, 1), PI);
+
+	uloc = glGetUniformLocation(program, "model_matrix");
+	if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, model_matrix);
+
+	if (bMesh && bMesh->vertex_array) glBindVertexArray(bMesh->vertex_array);
+	glDrawElements(GL_TRIANGLES, bMesh->index_list.size(), GL_UNSIGNED_INT, nullptr);
+	glfwSwapBuffers(window);
+}
+
 void render_end(float score)
 {
 	GLint uloc;
@@ -595,12 +622,44 @@ void render_end(float score)
 	glfwSwapBuffers(window);
 }
 
+bool isfullscreen()
+{
+	return glfwGetWindowMonitor(window) != nullptr;
+}
+
 void reshape(GLFWwindow* window, int width, int height)
 {
 	// set current viewport in pixels (win_x, win_y, win_width, win_height)
 	// viewport: the window area that are affected by rendering 
 	window_size = ivec2(width, height);
 	glViewport(0, 0, width, height);
+}
+
+void toggle_fullscreen(bool fullscreen)
+{
+	if (isfullscreen() == fullscreen)
+		return;
+
+	int width, height;
+
+	if (fullscreen)
+	{
+		glfwGetWindowPos(window, &back_window_pos.x, &back_window_pos.y);
+		glfwGetWindowSize(window, &back_window_size.x, &back_window_size.y);
+
+		const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+
+		glfwSetWindowMonitor(window, glfwGetPrimaryMonitor(), 0, 0, mode->width, mode->height, 0);
+		width = mode->width;
+		height = mode->height;
+	}
+	else
+	{
+		glfwSetWindowMonitor(window, nullptr, back_window_pos.x, back_window_pos.y, back_window_size.x, back_window_size.y, 0);
+		width = back_window_size.x;
+		height = back_window_size.y;
+	}
+	reshape(window, width, height);
 }
 
 void print_help()
@@ -626,8 +685,12 @@ void keyboard(GLFWwindow* window, int key, int scancode, int action, int mods)
 	if (action == GLFW_PRESS)
 	{
 		if (key == GLFW_KEY_ESCAPE)	glfwSetWindowShouldClose(window, GL_TRUE);
-		else if (key == GLFW_KEY_H || key == GLFW_KEY_F1)	print_help();
+		else if(key == GLFW_KEY_F){
+			full = !full;
+			toggle_fullscreen(full);
+		}
 		else if (state_game == 0) {
+			if (key == GLFW_KEY_H || key == GLFW_KEY_F1)	help = !help;
 			if(key == GLFW_KEY_1){
 				map_v = 0;
 				map_c = 999999999.0f;
@@ -914,7 +977,8 @@ int main(int argc, char* argv[])
 	while(!state_game && !glfwWindowShouldClose(window)){
 		glfwPollEvents();
 		update();
-		render_start();
+		if (help) render_help();
+		else render_start();
 	}
 	float score;
 	
