@@ -32,7 +32,8 @@ using namespace std;
 // global constants
 static const char*	window_name = "prismsurfer";
 static const uint	texture_num = 7;
-static const char*	texture_path[texture_num] = { "background.jpg", "tiles.png", "obstacle.png", "player.png", "title.jpg", "gameover.jpg", "howto.jpg" };
+static const char* texture_path[texture_num] = { "textures/background.jpg", "textures/tiles.png", "textures/obstacle.png",
+											"textures/player.png", "textures/title.jpg", "textures/gameover.jpg", "textures/howto.jpg" };
 static const bool	texture_alpha[texture_num] = { false, true, true, true, false, false, false };
 
 const uint	NUM_RECT = 6;
@@ -823,7 +824,7 @@ bool user_init()
 	long size;
 	uchar* fontbuf;
 
-	FILE* fontfile = fopen("LBRITE.TTF", "rb");
+	FILE* fontfile = fopen("font/LBRITE.TTF", "rb");
 	fseek(fontfile, 0, SEEK_END);
 	size = ftell(fontfile);
 	fseek(fontfile, 0, SEEK_SET);

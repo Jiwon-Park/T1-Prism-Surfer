@@ -13,8 +13,11 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="리소스 파일\font">
+      <UniqueIdentifier>{e902db44-e67f-4bb8-ac15-f8e9039eae79}</UniqueIdentifier>
+    </Filter>
     <Filter Include="리소스 파일\textures">
-      <UniqueIdentifier>{656b444e-5197-4360-90e9-547e4defae55}</UniqueIdentifier>
+      <UniqueIdentifier>{19c0eb0f-9709-4f21-a203-4c9585c6128d}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -48,6 +51,9 @@
     <ClInclude Include="stb_image_write.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -58,23 +64,31 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="obstacle.png">
+    <Image Include="textures\background.jpg">
       <Filter>리소스 파일\textures</Filter>
     </Image>
-    <Image Include="background.jpg">
+    <Image Include="textures\gameover.jpg">
       <Filter>리소스 파일\textures</Filter>
     </Image>
-    <Image Include="tiles.png">
+    <Image Include="textures\howto.jpg">
       <Filter>리소스 파일\textures</Filter>
     </Image>
-    <Image Include="player.png">
+    <Image Include="textures\obstacle.png">
       <Filter>리소스 파일\textures</Filter>
     </Image>
-    <Image Include="gameover.jpg">
+    <Image Include="textures\player.png">
       <Filter>리소스 파일\textures</Filter>
     </Image>
-    <Image Include="title.jpg">
+    <Image Include="textures\tiles.png">
       <Filter>리소스 파일\textures</Filter>
     </Image>
+    <Image Include="textures\title.jpg">
+      <Filter>리소스 파일\textures</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <Font Include="font\LBRITE.TTF">
+      <Filter>리소스 파일\font</Filter>
+    </Font>
   </ItemGroup>
 </Project>
