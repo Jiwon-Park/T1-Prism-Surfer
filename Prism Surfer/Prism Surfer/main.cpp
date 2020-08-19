@@ -7,6 +7,7 @@
 #include "cgmath.h"		// slee's simple math library
 #include "cgut.h"		// slee's OpenGL utility
 #include "shaders.h"
+#include "particle.h"
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -28,10 +29,10 @@ using namespace std;
 //*************************************
 // global constants
 static const char*	window_name = "prismsurfer";
-static const uint	texture_num = 7;
+static const uint	texture_num = 8;
 static const char* texture_path[texture_num] = { "textures/background.jpg", "textures/tiles.png", "textures/obstacle.png",
-											"textures/player.png", "textures/title.jpg", "textures/gameover.jpg", "textures/howto.jpg" };
-static const bool	texture_alpha[texture_num] = { false, true, true, true, false, false, false };
+											"textures/player.png", "textures/title.jpg", "textures/gameover.jpg", "textures/howto.jpg", "textures/particle.png" };
+static const bool	texture_alpha[texture_num] = { false, true, true, true, false, false, false, true};
 
 const uint	NUM_RECT = 6;
 const float radius = 5.0f;
@@ -91,7 +92,7 @@ int		pan_trigger = 0;
 
 int state_right = 0;
 int state_left = 0;
-int state_game=0;
+int state_game = 0;
 int pause=0;
 int help = 0;
 int full = 0;
@@ -99,11 +100,15 @@ int full = 0;
 float pause_time;
 float start_time;
 float map_v, map_c, player_position = 3.5f * width, ob_time, map_angle = 0;
+
+bool dead = false;
 vector<obstacle> obstacles;
+vector<particle_t> particles;
 
 //*************************************
 // scene objects
 mesh* mMesh = nullptr, * oMesh = nullptr, * pMesh = nullptr, * bMesh = nullptr, * tMesh = nullptr;
+uint part = 0;
 camera		cam;
 
 //*************************************
@@ -292,6 +297,24 @@ mesh* create_text_mesh(float width, float height)
 	return msh;
 }
 
+uint create_particle_varr()
+{
+	static vertex vertices[] = { {vec3(-1,-1,0),vec3(0,0,1),vec2(0,0)}, {vec3(1,-1,0),vec3(0,0,1),vec2(1,0)}, {vec3(-1,1,0),vec3(0,0,1),vec2(0,1)}, {vec3(1,1,0),vec3(0,0,1),vec2(1,1)} }; // strip ordering [0, 1, 3, 2]
+
+
+	// generation of vertex buffer: use vertices as it is
+	GLuint vertex_buffer;
+	glGenBuffers(1, &vertex_buffer);
+	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertex) * 4, &vertices[0], GL_STATIC_DRAW);
+
+	// generate vertex array object, which is mandatory for OpenGL 3.3 and higher
+	uint vertex_array = cg_create_vertex_array(vertex_buffer);
+	if (!vertex_array) { printf("%s(): failed to create vertex aray\n", __func__); return false; }
+	particles.resize(particle_t::MAX_PARTICLES);
+	return vertex_array;
+}
+
 void update()
 {
 	// update projection matrix
@@ -306,7 +329,7 @@ void update()
 	// update uniform variables in vertex/fragment shaders
 	GLint uloc;
 
-	// TODO: updating view matrix per frame
+	for (auto& p : particles)p.update();
 
 
 	uloc = glGetUniformLocation(program, "view_matrix");			if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, cam.view_matrix);
@@ -454,20 +477,43 @@ void render()
 
 	rendertext(scorestr, -2.35f, 2.0f);
 
-	//draw player
-	glBindTexture(GL_TEXTURE_2D, texture[3]);
 	int player_loc = int(player_position / width);
 	float player_off = player_position - float(player_loc * width) - width / 2;
 
-	model_matrix = mat4::translate(vec3(0, 0, cam.eye.z + CAM_PLAYER_DISTANCE)) * mat4::rotate(vec3(0, 0, 1), PI * player_loc / 3)
-		* mat4::translate(vec3(-player_off, 0, 0)) * mat4::translate(vec3(0, radius, 0));
+	{
+		glBindTexture(GL_TEXTURE_2D, texture[7]);
+		glBindVertexArray(part);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		for (auto& p : particles)
+		{
+			model_matrix = mat4::translate(vec3(p.pos.x, p.pos.y, 0)) * mat4::translate(vec3(0, 0, cam.eye.z + CAM_PLAYER_DISTANCE + 1.0f)) * mat4::rotate(vec3(0, 0, 1), PI * player_loc / 3)
+				* mat4::translate(vec3(-player_off, 0, 0)) * mat4::translate(vec3(0, radius, 0)) * mat4::scale(p.scale) * mat4::rotate(vec3(1, 0,0), PI);
 
-	uloc = glGetUniformLocation(program, "model_matrix");
-	if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, model_matrix);
+			uloc = glGetUniformLocation(program, "color");			if (uloc > -1) glUniform4fv(uloc, 1, p.color);
+			uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, model_matrix);
 
-	if (pMesh && pMesh->vertex_array)glBindVertexArray(pMesh->vertex_array);
-	glDrawElements(GL_TRIANGLES, pMesh->index_list.size(), GL_UNSIGNED_INT, nullptr);
+			glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+		}
+	}
 
+	if (!dead)
+	{
+		//draw player
+		glBindTexture(GL_TEXTURE_2D, texture[3]);
+
+		model_matrix = mat4::translate(vec3(0, 0, cam.eye.z + CAM_PLAYER_DISTANCE)) * mat4::rotate(vec3(0, 0, 1), PI * player_loc / 3)
+			* mat4::translate(vec3(-player_off, 0, 0)) * mat4::translate(vec3(0, radius, 0));
+
+		uloc = glGetUniformLocation(program, "model_matrix");
+		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, model_matrix);
+
+		if (pMesh && pMesh->vertex_array)glBindVertexArray(pMesh->vertex_array);
+		glDrawElements(GL_TRIANGLES, pMesh->index_list.size(), GL_UNSIGNED_INT, nullptr);
+	}
+	
 	// swap front and back buffers, and display to screen
 	glfwSwapBuffers(window);
 }
@@ -629,7 +675,11 @@ void keyboard(GLFWwindow* window, int key, int scancode, int action, int mods)
 
 			}
 		}
-		else if (key == GLFW_KEY_Q) state_game = 0;
+		else if (key == GLFW_KEY_Q)
+		{
+			state_game = 0;
+			pause = 0;
+		}
 		else if (key == GLFW_KEY_LEFT) {
 			state_left = 1;
 		}
@@ -689,6 +739,7 @@ bool user_init()
 	pMesh = create_player_mesh(width / 5, width / 5);
 	bMesh = create_player_mesh(backwidth, backheight);
 	tMesh = create_text_mesh(width / 4, width / 16);
+	part = create_particle_varr();
 
 	glGenTextures(texture_num, texture);
 	image *data;

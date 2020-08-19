@@ -51,6 +51,9 @@
     <ClInclude Include="resource.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="particle.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -80,6 +83,9 @@
       <Filter>리소스 파일\textures</Filter>
     </Image>
     <Image Include="textures\title.jpg">
+      <Filter>리소스 파일\textures</Filter>
+    </Image>
+    <Image Include="textures\particle.png">
       <Filter>리소스 파일\textures</Filter>
     </Image>
   </ItemGroup>

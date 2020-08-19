@@ -10,13 +10,14 @@ uniform mat4 model_matrix;
 uniform mat4 view_matrix;
 uniform mat4 projection_matrix;
 
+out vec4 epos;
 out vec3 norm;
 out vec2 tc;
 
 void main()
 {
 	vec4 wpos = model_matrix * vec4(position,1);
-	vec4 epos = view_matrix * wpos;
+	epos = view_matrix * wpos;
 	gl_Position = projection_matrix * epos;
 
 	// pass eye-coordinate normal to fragment shader
@@ -34,16 +35,19 @@ static const char* frag_shader = R"glsl(
 #endif
 
 // input from vertex shader
+in vec4 epos;
 in vec3 norm;
 in vec2 tc;
 
 // the only output variable
 out vec4 fragColor;
 
-uniform sampler2D myTexture;
+uniform sampler2D TEX;
 
 void main()
 {
-	fragColor = texture(myTexture, tc);
+
+	fragColor = texture( TEX, tc );
 }
+
 )glsl";
